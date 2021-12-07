@@ -1,2 +1,2 @@
-# boerewors
+# Shrapnel
 Handwritten compiler using .NET
