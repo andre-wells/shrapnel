@@ -15,21 +15,31 @@ while (true)
 enum SyntaxKind
 {
     None,
-    NumberToken
+    NumberToken,
+    WhitespaceToken,
+    PlusToken,
+    MinusToken,
+    StarToken,
+    SlashToken,
+    OpenParenthesisToken,
+    CloseParenthesisToken,
+    BadToken
 }
 
 class SyntaxToken
 {
-    public SyntaxToken(SyntaxKind kind, int position, string text)
+    public SyntaxToken(SyntaxKind kind, int position, string text, object? value)
     {
         Kind = kind;
         Position = position;
         Text = text;
+        Value = value;
     }
 
     public SyntaxKind Kind { get; }
     public int Position { get; }
     public string Text { get; }
+    public object? Value { get; }
 }
 
 class Lexer
@@ -67,12 +77,41 @@ class Lexer
         if(char.IsDigit(Current))
         {
             var start = _position;
-            while(char.IsDigit(Current)) //Keep getting digits
+            while(char.IsDigit(Current)) //Keep reading
                 Next();
 
             var length = _position - start;
             var text = _text.Substring(start, length);
-            return new SyntaxToken(SyntaxKind.NumberToken, start, text);
+            int.TryParse(text, out var value);
+            return new SyntaxToken(SyntaxKind.NumberToken, start, text, value);
         }
+
+        if(char.IsWhiteSpace(Current))
+        {
+            var start = _position;
+            while(char.IsWhiteSpace(Current)) //Keep reading
+                Next();
+
+            var length = _position - start;
+            var text = _text.Substring(start, length);
+            int.TryParse(text, out var value);
+            return new SyntaxToken(SyntaxKind.WhitespaceToken, start, text, value);
+        }
+
+        if(Current == '+')
+            return new SyntaxToken(SyntaxKind.PlusToken, _position++, "+", null);
+        else if(Current == '-')
+            return new SyntaxToken(SyntaxKind.MinusToken, _position++, "-", null);
+        else if(Current == '*')
+            return new SyntaxToken(SyntaxKind.StarToken, _position++, "*", null);
+        else if(Current == '/')
+            return new SyntaxToken(SyntaxKind.SlashToken, _position++, "/", null);
+        else if(Current == '(')
+            return new SyntaxToken(SyntaxKind.OpenParenthesisToken, _position++, "(", null);
+        else if(Current == ')')
+            return new SyntaxToken(SyntaxKind.CloseParenthesisToken, _position++, ")", null);
+        
+
+        return new SyntaxToken(SyntaxKind.BadToken, _position++, _text.Substring(_position - 1, 1), null);
     }
 }
