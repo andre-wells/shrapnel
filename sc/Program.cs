@@ -1,20 +1,37 @@
 ﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+
+// We're basically building an expression tree here
+//  1 + 2 * 3 
+//
+//      +
+//     / \
+//    1   *
+//       / \  
+//      2   3
+
 while (true)
 {
     var line = Console.ReadLine();
     if(string.IsNullOrWhiteSpace(line))
         return;
     
-    if(line == "1 + 2 * 3")
-        Console.WriteLine("7");
-    else
-        Console.WriteLine("ERROR: Invalid expression");
+    var lexer = new Lexer(line);
+    while (true)
+    {
+        var token = lexer.NextToken();
+        if(token.Kind == SyntaxKind.EndOfFileToken)
+            break;
+        Console.Write($"{token.Kind}: '{token.Text}'");
+
+        if(token.Value != null)
+            Console.Write($" {token.Value}");
+
+        Console.WriteLine();
+    }    
 }
 
 enum SyntaxKind
 {
-    None,
     NumberToken,
     WhitespaceToken,
     PlusToken,
@@ -23,7 +40,8 @@ enum SyntaxKind
     SlashToken,
     OpenParenthesisToken,
     CloseParenthesisToken,
-    BadToken
+    BadToken,
+    EndOfFileToken
 }
 
 class SyntaxToken
@@ -42,6 +60,9 @@ class SyntaxToken
     public object? Value { get; }
 }
 
+/// <summary>
+/// Lexer produces tokens. Think of these as leaves on a tree
+/// </summary>
 class Lexer
 {
     private readonly string _text;
@@ -74,6 +95,9 @@ class Lexer
         // + - * / ( )
         // <whitespaces>
 
+        if(_position >= _text.Length)
+            return new SyntaxToken(SyntaxKind.EndOfFileToken, _position, "\0", null);
+
         if(char.IsDigit(Current))
         {
             var start = _position;
@@ -94,8 +118,7 @@ class Lexer
 
             var length = _position - start;
             var text = _text.Substring(start, length);
-            int.TryParse(text, out var value);
-            return new SyntaxToken(SyntaxKind.WhitespaceToken, start, text, value);
+            return new SyntaxToken(SyntaxKind.WhitespaceToken, start, text, null);
         }
 
         if(Current == '+')
@@ -114,4 +137,60 @@ class Lexer
 
         return new SyntaxToken(SyntaxKind.BadToken, _position++, _text.Substring(_position - 1, 1), null);
     }
+}
+
+abstract class SyntaxNode
+{
+    public abstract SyntaxKind Kind { get; }
+}
+
+abstract class ExpressionSyntax : SyntaxNode
+{
+    
+}
+
+
+
+/// <summary>
+/// Parser produces sentences, which are trees. Effectively syntax nodes.
+/// Parsers are typically optimized for speed. They won't try to lex the entire input,
+/// they may consume some tokens at a time and process. We're going to just take the entire input.
+/// </summary>
+class Parser
+{
+    private readonly SyntaxToken[] _tokens;
+    private int _position;
+
+    public Parser(string text)
+    {
+        var tokens = new List<SyntaxToken>();
+
+        var lexer = new Lexer(text);
+        SyntaxToken token;
+        do
+        {
+            token = lexer.NextToken();
+
+            if(token.Kind != SyntaxKind.BadToken &&
+                token.Kind != SyntaxKind.BadToken)
+            {
+                tokens.Add(token);
+            }
+
+        } while (token.Kind != SyntaxKind.EndOfFileToken);
+
+        _tokens = tokens.ToArray();
+    }
+
+    private SyntaxToken Peek(int offset)
+    {
+        var index = _position + offset;
+        if(index >= _tokens.Length)
+            return _tokens[_tokens.Length - 1];
+
+        return _tokens[index];
+    }
+
+    private SyntaxToken Current => Peek(0);
+
 }
