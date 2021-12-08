@@ -41,12 +41,13 @@ enum SyntaxKind
     OpenParenthesisToken,
     CloseParenthesisToken,
     BadToken,
-    EndOfFileToken
+    EndOfFileToken,
+    BinaryExpression
 }
 
 class SyntaxToken
 {
-    public SyntaxToken(SyntaxKind kind, int position, string text, object? value)
+    public SyntaxToken(SyntaxKind kind, int position, string? text, object? value)
     {
         Kind = kind;
         Position = position;
@@ -56,7 +57,7 @@ class SyntaxToken
 
     public SyntaxKind Kind { get; }
     public int Position { get; }
-    public string Text { get; }
+    public string? Text { get; }
     public object? Value { get; }
 }
 
@@ -149,7 +150,32 @@ abstract class ExpressionSyntax : SyntaxNode
     
 }
 
+sealed class NumberExpressionSyntax : ExpressionSyntax
+{
+    public NumberExpressionSyntax(SyntaxToken numberToken)
+    {
+        NumberToken = numberToken;
+    }
 
+    public override SyntaxKind Kind => SyntaxKind.NumberToken;
+
+    public SyntaxToken NumberToken { get; }
+}
+
+sealed class BinaryExpressionSyntax : ExpressionSyntax
+{
+    public BinaryExpressionSyntax(ExpressionSyntax left, SyntaxToken operatorToken, ExpressionSyntax right)
+    {
+        Left = left;
+        OperatorToken = operatorToken;
+        Right = right;
+    }
+
+    public override SyntaxKind Kind => SyntaxKind.BinaryExpression;
+    public ExpressionSyntax Left { get; }
+    public SyntaxToken OperatorToken { get; }
+    public ExpressionSyntax Right { get; }
+}
 
 /// <summary>
 /// Parser produces sentences, which are trees. Effectively syntax nodes.
@@ -171,7 +197,7 @@ class Parser
         {
             token = lexer.NextToken();
 
-            if(token.Kind != SyntaxKind.BadToken &&
+            if(token.Kind != SyntaxKind.WhitespaceToken &&
                 token.Kind != SyntaxKind.BadToken)
             {
                 tokens.Add(token);
@@ -193,4 +219,39 @@ class Parser
 
     private SyntaxToken Current => Peek(0);
 
+    private SyntaxToken NextToken()
+    {
+        var current = Current;
+        _position++;
+        return current;
+    }
+
+    private SyntaxToken Match(SyntaxKind kind)
+    {
+        if(Current.Kind == kind)
+            return NextToken();
+
+        return new SyntaxToken(kind, Current.Position, null, null);
+    }
+
+    public ExpressionSyntax Parse()
+    {
+        var left = ParsePrimaryExpression();
+
+        while (Current.Kind == SyntaxKind.PlusToken ||
+                Current.Kind == SyntaxKind.MinusToken)
+        {
+            var operatorToken = NextToken();
+            var right = ParsePrimaryExpression();
+            left = new BinaryExpressionSyntax(left, operatorToken, right);
+        }
+
+        //https://youtu.be/wgHIkdUQbp0?t=2646
+        return left;
+    }
+
+    private ExpressionSyntax ParsePrimaryExpression()
+    {
+        throw new NotImplementedException();
+    }
 }
