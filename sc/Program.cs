@@ -30,6 +30,11 @@ while (true)
     }    
 }
 
+static void PrettyPrint(SyntaxNode nod)
+{
+    //https://youtu.be/wgHIkdUQbp0?t=2902
+}
+
 enum SyntaxKind
 {
     NumberToken,
@@ -45,7 +50,7 @@ enum SyntaxKind
     BinaryExpression
 }
 
-class SyntaxToken
+class SyntaxToken : SyntaxNode
 {
     public SyntaxToken(SyntaxKind kind, int position, string? text, object? value)
     {
@@ -55,10 +60,15 @@ class SyntaxToken
         Value = value;
     }
 
-    public SyntaxKind Kind { get; }
+    public override SyntaxKind Kind { get; }
     public int Position { get; }
     public string? Text { get; }
     public object? Value { get; }
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        return Enumerable.Empty<SyntaxNode>();
+    }
 }
 
 /// <summary>
@@ -143,6 +153,8 @@ class Lexer
 abstract class SyntaxNode
 {
     public abstract SyntaxKind Kind { get; }
+
+    public abstract IEnumerable<SyntaxNode> GetChildren();
 }
 
 abstract class ExpressionSyntax : SyntaxNode
@@ -160,6 +172,11 @@ sealed class NumberExpressionSyntax : ExpressionSyntax
     public override SyntaxKind Kind => SyntaxKind.NumberToken;
 
     public SyntaxToken NumberToken { get; }
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return NumberToken;
+    }
 }
 
 sealed class BinaryExpressionSyntax : ExpressionSyntax
@@ -175,6 +192,13 @@ sealed class BinaryExpressionSyntax : ExpressionSyntax
     public ExpressionSyntax Left { get; }
     public SyntaxToken OperatorToken { get; }
     public ExpressionSyntax Right { get; }
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        yield return Left;
+        yield return OperatorToken;
+        yield return Right;
+    }
 }
 
 /// <summary>
@@ -246,12 +270,13 @@ class Parser
             left = new BinaryExpressionSyntax(left, operatorToken, right);
         }
 
-        //https://youtu.be/wgHIkdUQbp0?t=2646
+        
         return left;
     }
 
     private ExpressionSyntax ParsePrimaryExpression()
     {
-        throw new NotImplementedException();
+        var numberToken = Match(SyntaxKind.NumberToken);
+        return new NumberExpressionSyntax(numberToken);
     }
 }
